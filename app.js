@@ -1,18 +1,57 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const feedRoutes = require('./routes/feed');
+const path = require('path');
+const { v4: uuidv4 } = require('uuid');
+const express = require("express");
+const bodyParser = require("body-parser");
+const mongoose = require("mongoose");
+const multer = require('multer');
+
+const feedRoutes = require("./routes/feed");
+const MONGODB_URI = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PW}@cluster0.g7wrqc5.mongodb.net/social?retryWrites=true&appName=Cluster0`;
 
 const app = express();
 
-app.use(bodyParser.json());
-
-app.use((req,res,next) => {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELTE');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-    next();
+const fileStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, 'images');
+    },
+    filename: (req, file, cb) => {
+        cb(null, uuidv4() + '.' +file.originalname.slice((file.originalname.lastIndexOf(".") - 1 >>> 0) + 2));
+    }
 });
 
-app.use('/feed', feedRoutes);
+const fileFilter = (req, file, cb) => {
+    if (file.mimetype == 'image/png' || file.mimetype == 'image/jpg' || file.mimetype == 'image/jpeg'){
+        cb(null, true);
+    } else {
+        cb(null, false);
+    }
+};
 
-app.listen(8080);
+app.use(multer({storage: fileStorage, fileFilter: fileFilter}).single('image'));
+
+app.use(bodyParser.json());
+app.use('/images', express.static(path.join(__dirname, 'images')));
+
+app.use((req, res, next) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE");
+  res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+  next();
+});
+
+app.use("/feed", feedRoutes);
+
+app.use((err, req, res, next) => {
+    console.log(err);
+    const status = err.statusCode || 500;
+    const message = err.message;
+    res.status(status).json({message: message});
+});
+
+
+mongoose
+  .connect(MONGODB_URI)
+  .then((r) => {
+    app.listen(8080);
+  })
+  .catch((e) => console.log(e));
