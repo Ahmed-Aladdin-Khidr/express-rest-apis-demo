@@ -6,6 +6,7 @@ const mongoose = require("mongoose");
 const multer = require('multer');
 
 const feedRoutes = require("./routes/feed");
+const authRoutes = require("./routes/auth");
 const MONGODB_URI = `mongodb+srv://${process.env.DB_USER}:${process.env.DB_PW}@cluster0.g7wrqc5.mongodb.net/social?retryWrites=true&appName=Cluster0`;
 
 const app = express();
@@ -40,12 +41,14 @@ app.use((req, res, next) => {
 });
 
 app.use("/feed", feedRoutes);
+app.use("/auth", authRoutes);
 
 app.use((err, req, res, next) => {
     console.log(err);
     const status = err.statusCode || 500;
     const message = err.message;
-    res.status(status).json({message: message});
+    const data = error.data
+    res.status(status).json({message: message, data: data});
 });
 
 
